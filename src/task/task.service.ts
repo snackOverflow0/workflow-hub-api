@@ -3,12 +3,14 @@ import { CreateTaskDto } from './dto/create-task.dto';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { CacheService } from 'src/cache/cache.service';
 import { StorageService } from 'src/storage/storage.service';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 @Injectable()
 export class TaskService {
   constructor(
     private prisma: PrismaService,
     private cache: CacheService,
-    private storage: StorageService
+    private storage: StorageService,
+    private eventEmitter: EventEmitter2
   ) {}
 
   async createProjectTask(projectId: string, dto: CreateTaskDto) {
@@ -30,6 +32,14 @@ export class TaskService {
         }
       }
     })
+
+    if (newTask.assignee && newTask.assignee.email) {
+      this.eventEmitter.emit('task.assigned', {
+        email: newTask.assignee.email,
+        taskTitle: newTask.title
+      }) 
+      console.log('[EVENT DISPATCHER]: Broadcasted task.assigned message payload out to background workers.');
+    }
 
     const cacheKey = `project:${projectId}:tasks`
     await this.cache.del(cacheKey)
