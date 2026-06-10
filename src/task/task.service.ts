@@ -1,14 +1,14 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { CreateTaskDto } from './dto/create-task.dto';
-import { UpdateTaskDto } from './dto/update-task.dto';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { CacheService } from 'src/cache/cache.service';
-
+import { StorageService } from 'src/storage/storage.service';
 @Injectable()
 export class TaskService {
   constructor(
     private prisma: PrismaService,
-    private cache: CacheService
+    private cache: CacheService,
+    private storage: StorageService
   ) {}
 
   async createProjectTask(projectId: string, dto: CreateTaskDto) {
@@ -56,5 +56,22 @@ export class TaskService {
     await this.cache.set(cacheKey, JSON.stringify(dbTasks), 300)
 
     return dbTasks
+  }
+
+  async addAttachmentToTask(taskId: string, file: Express.Multer.File) {
+    const taskExists = await this.prisma.task.findUnique({ where: { id: taskId } });
+    if (!taskExists) {
+      throw new NotFoundException('Target task entity not found.');
+    }
+
+    const cloudAsset = await this.storage.uploadFileToCloud(file);
+
+    return this.prisma.attachment.create({
+      data: {
+        taskId: taskId,
+        fileUrl: cloudAsset.secure_url, 
+        fileName: file.originalname,
+      },
+    });
   }
 }

@@ -7,9 +7,10 @@ import { WorkspaceModule } from './workspace/workspace.module';
 import { ProjectModule } from './project/project.module';
 import { TaskModule } from './task/task.module';
 import { CacheModule } from './cache/cache.module';
+import { StorageModule } from './storage/storage.module';
 
 @Module({
-  imports: [PrismaModule, AuthModule, WorkspaceModule, ProjectModule, TaskModule, CacheModule],
+  imports: [PrismaModule, AuthModule, WorkspaceModule, ProjectModule, TaskModule, CacheModule, StorageModule],
   controllers: [AppController],
   providers: [AppService],
 })
