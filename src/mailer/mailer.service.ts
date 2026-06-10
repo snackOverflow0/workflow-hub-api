@@ -19,7 +19,7 @@ export class MailerService {
 
   @OnEvent('task.assigned')
   async handleTaskAssignedEvent(payload: { email: string; taskTitle: string }) {
-    console.log(`📨 [EVENT EXECUTOR]: Intercepted assignment event. Dispatching background email alert to ${payload.email}...`);
+    console.log(`[EVENT EXECUTOR]: Intercepted assignment event. Dispatching background email alert to ${payload.email}...`);
     
     await this.transporter.sendMail({
       from: '"WorkFlow Hub Team" <noreply@workflowhub.com>',
