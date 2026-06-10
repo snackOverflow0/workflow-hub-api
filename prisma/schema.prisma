@@ -1,0 +1,158 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+// Global platform access control role mapping
+enum GlobalRole {
+  SUPER_ADMIN
+  STANDARD_USER
+}
+
+// Workspace-specific team member authorization permissions
+enum WorkspaceRole {
+  OWNER
+  ADMIN
+  MEMBER
+}
+
+// Finite task board workflow state columns
+enum TaskStatus {
+  BACKLOG
+  TODO
+  IN_PROGRESS
+  IN_REVIEW
+  DONE
+}
+
+// Task prioritization indicator metrics
+enum TaskPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+// 1. Core Identity Table: Manages access claims, verification tokens, and secure hashes
+model User {
+  id                 String            @id @default(uuid())
+  
+  email              String            @unique
+  password           String
+  globalRole         GlobalRole        @default(STANDARD_USER)
+  refreshTokenHash   String?           // Stores hashed long-lived refresh tokens securely
+  avatarUrl          String?
+  isEmailVerified    Boolean           @default(false)
+  verificationToken  String?
+  passwordResetToken String?
+  createdAt          DateTime          @default(now())
+  updatedAt          DateTime          @updatedAt
+
+  // Relational Integrity Links
+  ownedWorkspaces      Workspace[]       @relation("WorkspaceOwner")
+  workspaceMemberships WorkspaceMember[]
+  assignedTasks        Task[]            @relation("TaskAssignee")
+  comments             Comment[]
+  activities           Activity[]
+}
+
+// 2. Tenant Workspace Table: Represents the core team bucket container
+model Workspace {
+  id        String   @id @default(uuid())
+  name      String
+  logoUrl   String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relational Integrity Links
+  ownerId   String
+  owner     User             @relation("WorkspaceOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  members   WorkspaceMember[]
+  projects  Project[]
+  activities Activity[]
+}
+
+// 3. Workspace Member Intersection Table: Handles the Many-to-Many relationship between Users and Workspaces
+model WorkspaceMember {
+  id          String        @id @default(uuid())
+  workspaceId String
+  workspace   Workspace     @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  userId      String
+  user        User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role        WorkspaceRole @default(MEMBER)
+  joinedAt    DateTime      @default(now())
+
+  // Compound Unique Constraint: Prevents duplicate membership records
+  @@unique([workspaceId, userId])
+}
+
+// 4. Project Board Table: Scopes groups of tasks inside a workspace container
+model Project {
+  id          String    @id @default(uuid())
+  workspaceId String
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  name        String
+  description String?
+  isArchived  Boolean   @default(false)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  // Relational Integrity Links
+  tasks       Task[]
+}
+
+// 5. Task Work Item Table: Manages independent assignments, metadata, and state columns
+model Task {
+  id           String        @id @default(uuid())
+  projectId    String
+  project      Project       @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  assignedToId String?
+  assignee     User?         @relation("TaskAssignee", fields: [assignedToId], references: [id], onDelete: SetNull) // Keeps task even if user account is removed
+  title        String
+  description  String?
+  status       TaskStatus    @default(TODO)
+  priority     TaskPriority  @default(MEDIUM)
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+
+  // Relational Integrity Links
+  comments     Comment[]
+  attachments  Attachment[]
+}
+
+// 6. Comment Feed Table: Handles conversational feedback strings on specific tasks
+model Comment {
+  id        String   @id @default(uuid())
+  taskId    String
+  task      Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  content   String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// 7. File Attachment Table: Tracks Cloudinary resource file pointers
+model Attachment {
+  id        String   @id @default(uuid())
+  taskId    String
+  task      Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  fileUrl   String
+  fileName  String
+  createdAt DateTime @default(now())
+}
+
+// 8. Audit Log Activity Table: Tracks user interactions for compliance streaming histories
+model Activity {
+  id                String    @id @default(uuid())
+  workspaceId       String
+  workspace         Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  userId            String
+  user              User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  actionDescription String
+  createdAt         DateTime  @default(now())
+}
