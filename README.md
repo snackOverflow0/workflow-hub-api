@@ -1,28 +1,25 @@
-# 🎯 WorkFlow Hub API
+# WorkFlow Hub API
 
-WorkFlow Hub is an enterprise-grade, high-performance SaaS backend built with **NestJS**, **TypeScript**, and **Prisma**. The platform architecture showcases advanced engineering design patterns, dual-token security perimeters, memory-streamed media pipelines, multi-tier caching grids, and fully decoupled event-driven background actions.
+WorkFlow Hub is an enterprise-grade, high-performance SaaS backend built with **NestJS**, **TypeScript**, and **Prisma**. The platform architecture showcases advanced engineering design patterns, dual-token security perimeters, memory-streamed media pipelines, multi-tier caching grids, and fully decoupled distributed background message queues.
 
 ---
 
-## 🛠️ Core Architecture & High-Performance Features
+## Core Architecture & High-Performance Features
 
-* **Decoupled Event-Driven Subsystems (`@nestjs/event-emitter`):** High-velocity actions (like task creation) respond to the client instantly (under ~50ms) by emitting asynchronous internal system events. Isolated background workers handle heavy downstream actions like SMTP mail delivery without blocking the primary HTTP request-response loop.
+* **Distributed Persistent Message Queues (`@nestjs/bullmq` + BullMQ):** High-velocity actions (like task creation) respond to the client instantly (under ~100ms) by transforming tasks into persistent jobs stored securely inside **Redis**. Isolated background workers handle heavy downstream actions like SMTP mail delivery asynchronously. Includes built-in exponential backoff, failure catching, and automated fault-tolerant retry tracking.
 * **Multi-Tier Caching Layer (Redis):** Optimizes database read performance by caching frequent queries (like task lists) with automated TTL invalidation upon data mutation writes.
-* **Memory-Streamed Cloud Infrastructure (Cloudinary & Multer):** File attachments are intercepted using multi-part form stream buffers and piped directly to cloud content delivery networks without writing messy, volatile temporary files to the host disk.
+* **Memory-Streamed Cloud Infrastructure (Cloudinary & Multer):** File attachments are intercepted using multi-part form stream buffers and piped directly to cloud content delivery networks without writing volatile temporary files to the host disk.
 * **Global Request Telemetry Interceptor:** Injects automated microsecond profiling across 100% of active HTTP endpoints for absolute system execution observability.
 * **Dual-Token Security Perimeter:** Implements rigid authentication tracking via passport-driven JSON Web Tokens (JWT) and custom operational Guards.
 
----
+## Project Folder Structure
 
-## 🏗️ Project Folder Structure
-
-```text
 src/
 ├── auth/                 # Multi-layered authentication & passport-jwt security
 ├── cache/                # Redis memory injection architecture and clients
 ├── common/
 │   └── interceptors/    # Global execution telemetry & timing metrics
-├── mailer/               # Decoupled SMTP handlers and async event workers
+├── mailer/               # Distributed BullMQ processors and async background mail workers
 ├── prisma/               # Database connectivity layer and multi-table mapping
 ├── project/              # Project scope routing controllers & services
 ├── storage/              # Memory-streamed cloud media management lines
@@ -36,7 +33,7 @@ Node.js (v16.x or higher)
 
 PostgreSQL Database Instance
 
-Redis Server Instance
+Redis Server Instance (Required for caching and background queues)
 
 🔐 Environmental Configuration
 Create a .env file in the root directory of your project workspace and populate it with your custom operational credentials:
@@ -48,7 +45,7 @@ PORT=3000
 # Database Engine Connections (PostgreSQL)
 DATABASE_URL="postgresql://username:password@localhost:5432/workflow_hub?schema=public"
 
-# Multi-Tier Caching Memory Grid (Redis)
+# Multi-Tier Caching & Queue Infrastructure (Redis)
 REDIS_HOST="localhost"
 REDIS_PORT=6379
 
@@ -65,7 +62,7 @@ SMTP_HOST="sandbox.smtp.mailtrap.io"
 SMTP_PORT=2525
 SMTP_USER="your_mailtrap_user_token"
 SMTP_PASS="your_mailtrap_pass_token"
-🚀 Local Execution Setup
+Local Execution Setup
 Clone the project code asset repository locally.
 
 Install the structural Node.js engine dependency maps:
@@ -80,8 +77,9 @@ Fire up the NestJS active compilation watch loop development server:
 
 Bash
 npm run start:dev
-🧪 Verifying Core Capabilities (Postman Guide)
-1. Asynchronous Event-Driven Notifications
+
+Verifying Core Capabilities (Postman Guide)
+1. Distributed Queue Notifications (BullMQ)
 Endpoint: POST /project/:projectId/tasks
 
 Authorization: Bearer Token (JWT)
@@ -96,7 +94,7 @@ JSON
   "status": "TODO",
   "assignedToId": "TARGET_USER_UUID"
 }
-Expected Behavior: Look at your application terminal console log immediately after dispatching. You will observe the global logging interceptor closing out the request metrics in a rapid ~45ms, immediately followed by the background event driver intercepting the action and processing the email worker dispatch!
+Expected Behavior: Look at your application terminal console log immediately after dispatching. You will observe the global logging interceptor closing out the request metrics in a rapid ~91ms, immediately followed by a message showing that the job has been securely offloaded into Redis. The background worker then executes the SMTP transaction isolated from the main HTTP loop.
 
 2. Stream-Buffered Media Uploads
 Endpoint: POST /tasks/:id/attachments
