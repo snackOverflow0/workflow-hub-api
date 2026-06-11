@@ -13,9 +13,20 @@ import { APP_INTERCEPTOR } from '@nestjs/core';
 import { LoggingInterceptor } from './common/interceptors/logging.interceptor';
 import { EventEmitterModule } from '@nestjs/event-emitter';
 import { ConfigModule } from '@nestjs/config';
+import { BullModule } from '@nestjs/bullmq';
 
 @Module({
   imports: [
+    ConfigModule.forRoot({ isGlobal: true }),
+    EventEmitterModule.forRoot(),
+
+    BullModule.forRoot({
+      connection: {
+        host: process.env.REDIS_HOST || 'localhost',
+        port: Number(process.env.REDIS_PORT) || 6379
+      }
+    }),
+
     PrismaModule, 
     AuthModule, 
     WorkspaceModule, 
@@ -24,8 +35,7 @@ import { ConfigModule } from '@nestjs/config';
     CacheModule, 
     StorageModule, 
     MailerModule, 
-    ConfigModule.forRoot({ isGlobal: true }),
-    EventEmitterModule.forRoot()
+
   ],
   controllers: [AppController],
   providers: [
